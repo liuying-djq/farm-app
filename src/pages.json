@@ -1,0 +1,160 @@
+{
+	"pages": [
+		{
+			"path": "pages/user/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/register",
+			"style": {
+				"navigationBarTitleText": "注册",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "智慧农场"
+			}
+		},
+		{
+			"path": "pages/lease/index",
+			"style": {
+				"navigationBarTitleText": "土地租赁"
+			}
+		},
+		{
+			"path": "pages/lease/detail",
+			"style": {
+				"navigationBarTitleText": "土地详情"
+			}
+		},
+		{
+			"path": "pages/lease/contract",
+			"style": {
+				"navigationBarTitleText": "租赁合同"
+			}
+		},
+		{
+			"path": "pages/plant/index",
+			"style": {
+				"navigationBarTitleText": "我的种植"
+			}
+		},
+		{
+			"path": "pages/plant/land",
+			"style": {
+				"navigationBarTitleText": "地块种植"
+			}
+		},
+		{
+			"path": "pages/plant/detail",
+			"style": {
+				"navigationBarTitleText": "种植详情"
+			}
+		},
+		{
+			"path": "pages/plant/add",
+			"style": {
+				"navigationBarTitleText": "添加种植"
+			}
+		},
+		{
+			"path": "pages/plant/weekly",
+			"style": {
+				"navigationBarTitleText": "每周计划"
+			}
+		},
+		{
+			"path": "pages/market/index",
+			"style": {
+				"navigationBarTitleText": "农产品共享"
+			}
+		},
+		{
+			"path": "pages/market/edit",
+			"style": {
+				"navigationBarTitleText": "编辑产品"
+			}
+		},
+		{
+			"path": "pages/mine/index",
+			"style": {
+				"navigationBarTitleText": "我的"
+			}
+		},
+		{
+			"path": "pages/mine/contracts",
+			"style": {
+				"navigationBarTitleText": "我的合同"
+			}
+		},
+		{
+			"path": "pages/mine/leases",
+			"style": {
+				"navigationBarTitleText": "租赁记录"
+			}
+		},
+		{
+			"path": "pages/mine/plants",
+			"style": {
+				"navigationBarTitleText": "种植记录"
+			}
+		},
+		{
+			"path": "pages/mine/sales",
+			"style": {
+				"navigationBarTitleText": "售卖记录"
+			}
+		},
+		{
+			"path": "pages/mine/edit",
+			"style": {
+				"navigationBarTitleText": "编辑资料"
+			}
+		},
+		{
+			"path": "pages/mine/pending-ship",
+			"style": {
+				"navigationBarTitleText": "准备发货"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "智慧农场",
+		"navigationBarBackgroundColor": "#4CAF50",
+		"backgroundColor": "#F5F5F5"
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#4CAF50",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/lease/index",
+				"text": "租赁"
+			},
+			{
+				"pagePath": "pages/plant/index",
+				"text": "种植"
+			},
+			{
+				"pagePath": "pages/market/index",
+				"text": "共享"
+			},
+			{
+				"pagePath": "pages/mine/index",
+				"text": "我的"
+			}
+		]
+	}
+}
