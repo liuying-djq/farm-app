@@ -81,6 +81,12 @@
 			}
 		},
 		{
+			"path": "pages/market/shop",
+			"style": {
+				"navigationBarTitleText": "产品商城"
+			}
+		},
+		{
 			"path": "pages/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"
@@ -114,12 +120,6 @@
 			"path": "pages/mine/edit",
 			"style": {
 				"navigationBarTitleText": "编辑资料"
-			}
-		},
-		{
-			"path": "pages/mine/pending-ship",
-			"style": {
-				"navigationBarTitleText": "准备发货"
 			}
 		}
 	],

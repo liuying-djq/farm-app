@@ -22,6 +22,20 @@ export function getMyOrders(buyerId) {
 }
 
 /**
+ * 获取卖家的所有订单（排序：未付款在前，已付款在后）
+ */
+export function getSellerOrders(sellerId) {
+  return getRequest('/api/order/sellerOrders', { sellerId })
+}
+
+/**
+ * 买家付款
+ */
+export function payOrder(data) {
+  return request('/api/order/pay', data)
+}
+
+/**
  * 发货
  */
 export function shipOrder(data) {
@@ -33,4 +47,11 @@ export function shipOrder(data) {
  */
 export function confirmReceipt(data) {
   return request('/api/order/confirm', data)
+}
+
+/**
+ * 退款
+ */
+export function refundOrder(data) {
+  return request('/api/order/refund', data)
 }

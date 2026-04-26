@@ -16,10 +16,18 @@ export function createPlant(data) {
   return request('/api/plant/create', data)
 }
 
+export function createPlantWithSensor(data) {
+  return request('/api/plant/createWithSensor', data)
+}
+
 export function updatePlant(data) {
   return request('/api/plant/update', data)
 }
 
 export function deletePlant(data) {
   return request('/api/plant/delete', data)
+}
+
+export function getSensorAnalysis(data) {
+  return request('/api/sensor/analyze', data)
 }

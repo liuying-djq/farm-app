@@ -33,6 +33,25 @@
       <text class="desc-content">{{ land.description }}</text>
     </view>
 
+    <!-- 已租赁土地的快捷操作 -->
+    <view class="quick-actions" v-if="myLease && myLease.status === 'active'">
+      <text class="card-title">快捷操作</text>
+      <view class="action-grid">
+        <view class="action-card" @click="handleMaintain">
+          <view class="action-icon-wrap action-icon-blue">
+            <text class="action-icon-text">🔧</text>
+          </view>
+          <text class="action-name">土地维护</text>
+        </view>
+        <view class="action-card" @click="handleMonitor">
+          <view class="action-icon-wrap action-icon-green">
+            <text class="action-icon-text">📹</text>
+          </view>
+          <text class="action-name">现场监控</text>
+        </view>
+      </view>
+    </view>
+
     <view class="lease-form" v-if="land.status === 'available'">
       <text class="card-title">租赁信息</text>
       <view class="form-item">
@@ -101,7 +120,7 @@
       </view>
     </view>
 
-    <view class="bottom-bar" v-if="land.status === 'available'">
+    <view class="bottom-bar" v-if="land.status === 'available' && !myLease">
       <view class="price-info">
         <text class="price-unit">{{ land.price }}元/亩/年</text>
       </view>
@@ -110,17 +129,33 @@
       </view>
     </view>
 
+    <view class="bottom-bar" v-else-if="myLease && myLease.status === 'active'">
+      <view class="debug-info" v-if="false">
+        <text>调试: myLease={{ myLease }}</text>
+      </view>
+      <view class="terminate-btn" @click="doTerminate">
+        <text class="terminate-btn-text">申请退租</text>
+      </view>
+    </view>
+
+    <view class="bottom-bar" v-else-if="myLease && myLease.status === 'expired'">
+      <view class="renew-btn" @click="showRenewModal">
+        <text class="renew-btn-text">续租</text>
+      </view>
+    </view>
+
     <view class="bottom-bar" v-else>
       <view class="leased-tip">
         <text class="leased-text">该土地已被租赁</text>
+        <text class="debug-text" v-if="myLease">[调试: status={{myLease.status}}]</text>
       </view>
     </view>
   </view>
 </template>
 
 <script>
-import { getLandDetail } from '../../api/land'
-import { createLease } from '../../api/lease'
+import { getLandDetail, landMaintain, landMonitor } from '../../api/land'
+import { createLease, terminateLease, renewLease, getActiveLeases } from '../../api/lease'
 import { getCurrentUserId } from '../../utils/auth'
 
 export default {
@@ -132,7 +167,10 @@ export default {
       monthValues: [6, 12, 24, 36],
       monthIndex: 1,
       startDate: '',
-      showPayModal: false
+      showPayModal: false,
+      myLease: null,
+      showRenewModal: false,
+      renewMonths: 12
     }
   },
   computed: {
@@ -155,12 +193,30 @@ export default {
     const now = new Date()
     this.startDate = now.toISOString().slice(0, 10)
     this.loadDetail()
+    this.checkMyLease()
   },
   methods: {
     async loadDetail() {
       const res = await getLandDetail({ id: this.landId })
       if (res && res.data) {
         this.land = res.data
+      }
+    },
+    async checkMyLease() {
+      const userId = getCurrentUserId()
+      console.log('当前用户ID:', userId)
+      console.log('当前土地ID:', this.landId)
+      
+      const res = await getActiveLeases({ userId })
+      console.log('活跃租赁列表:', res)
+      
+      if (res && res.data) {
+        const myLease = res.data.find(lease => lease.landId === this.landId)
+        console.log('找到的租赁:', myLease)
+        if (myLease) {
+          this.myLease = myLease
+          console.log('设置myLease:', this.myLease)
+        }
       }
     },
     onMonthChange(e) {
@@ -181,7 +237,7 @@ export default {
 
       uni.showLoading({ title: '付款中...' })
 
-      // 模拟付款过程（实际应接微信支付等）
+      // 模拟付款过程(实际应接微信支付等)
       setTimeout(async () => {
         uni.hideLoading()
 
@@ -212,6 +268,101 @@ export default {
           }, 1500)
         }
       }, 1500)
+    },
+    async handleMaintain() {
+      uni.showLoading({ title: '加载中...' })
+      try {
+        const res = await landMaintain({ landId: this.landId })
+        uni.hideLoading()
+        if (res && res.code === 200) {
+          uni.showModal({
+            title: '土地维护',
+            content: res.data || '维护服务即将上线，敬请期待',
+            showCancel: false
+          })
+        }
+      } catch (error) {
+        uni.hideLoading()
+        uni.showToast({ title: '功能开发中', icon: 'none' })
+      }
+    },
+    async handleMonitor() {
+      uni.showLoading({ title: '加载中...' })
+      try {
+        const res = await landMonitor({ landId: this.landId })
+        uni.hideLoading()
+        if (res && res.code === 200) {
+          uni.showModal({
+            title: '现场监控',
+            content: res.data || '监控服务即将上线，敬请期待',
+            showCancel: false
+          })
+        }
+      } catch (error) {
+        uni.hideLoading()
+        uni.showToast({ title: '功能开发中', icon: 'none' })
+      }
+    },
+    doTerminate() {
+      uni.showModal({
+        title: '确认退租',
+        content: '退租后7天将归档到租赁记录,是否继续?',
+        success: async (res) => {
+          if (res.confirm) {
+            uni.showLoading({ title: '退租中...' })
+            try {
+              const result = await terminateLease({
+                leaseId: this.myLease.id,
+                userId: getCurrentUserId(),
+                reason: '用户主动退租'
+              })
+              uni.hideLoading()
+              if (result && result.data) {
+                uni.showToast({ title: '退租成功', icon: 'success' })
+                this.myLease = null
+                this.loadDetail()
+              }
+            } catch (error) {
+              uni.hideLoading()
+              uni.showToast({ title: '退租失败', icon: 'error' })
+            }
+          }
+        }
+      })
+    },
+    showRenewModal() {
+      uni.showModal({
+        title: '续租',
+        content: '选择续租时长',
+        editable: false,
+        success: (res) => {
+          if (res.confirm) {
+            this.doRenew()
+          }
+        }
+      })
+    },
+    async doRenew() {
+      uni.showLoading({ title: '续租中...' })
+      try {
+        const result = await renewLease({
+          oldLeaseId: this.myLease.id,
+          userId: getCurrentUserId(),
+          newMonths: this.renewMonths
+        })
+        uni.hideLoading()
+        if (result && result.data) {
+          uni.showToast({ title: '续租成功', icon: 'success' })
+          setTimeout(() => {
+            uni.navigateTo({
+              url: '/pages/lease/contract?id=' + result.data.id
+            })
+          }, 1500)
+        }
+      } catch (error) {
+        uni.hideLoading()
+        uni.showToast({ title: '续租失败', icon: 'error' })
+      }
     }
   }
 }
@@ -321,6 +472,56 @@ export default {
   line-height: 1.8;
 }
 
+.quick-actions {
+  background-color: #ffffff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.action-grid {
+  display: flex;
+  gap: 20rpx;
+}
+
+.action-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24rpx 0;
+  background-color: #f5f7fa;
+  border-radius: 12rpx;
+}
+
+.action-icon-wrap {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+}
+
+.action-icon-blue {
+  background-color: #e6f7ff;
+}
+
+.action-icon-green {
+  background-color: #f6ffed;
+}
+
+.action-icon-text {
+  font-size: 36rpx;
+}
+
+.action-name {
+  font-size: 26rpx;
+  color: #333333;
+  font-weight: 500;
+}
+
 .lease-form {
   background-color: #ffffff;
   border-radius: 12rpx;
@@ -402,6 +603,30 @@ export default {
 }
 
 .lease-btn-text {
+  font-size: 30rpx;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.terminate-btn {
+  background: linear-gradient(135deg, #FF5722, #FF7043);
+  padding: 20rpx 60rpx;
+  border-radius: 40rpx;
+}
+
+.terminate-btn-text {
+  font-size: 30rpx;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.renew-btn {
+  background: linear-gradient(135deg, #2196F3, #42A5F5);
+  padding: 20rpx 60rpx;
+  border-radius: 40rpx;
+}
+
+.renew-btn-text {
   font-size: 30rpx;
   color: #ffffff;
   font-weight: bold;

@@ -50,6 +50,19 @@
         <view class="land-desc" v-if="item.description">
           <text class="desc-text">{{ item.description }}</text>
         </view>
+        
+        <!-- 我的租赁操作按钮 -->
+        <view class="my-lease-actions" v-if="item.isMyLease && item.leaseStatus === 'active'" @click.stop>
+          <view class="action-btn terminate-btn" @click="handleTerminate(item)">
+            <text class="action-btn-text">退租</text>
+          </view>
+        </view>
+        
+        <view class="my-lease-actions" v-else-if="item.isMyLease && item.leaseStatus === 'expired'" @click.stop>
+          <view class="action-btn renew-btn" @click="handleRenew(item)">
+            <text class="action-btn-text">续租</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -61,6 +74,8 @@
 
 <script>
 import { getLandList } from '../../api/land'
+import { getActiveLeases, terminateLease, renewLease } from '../../api/lease'
+import { getCurrentUserId } from '../../utils/auth'
 
 export default {
   data() {
@@ -89,9 +104,27 @@ export default {
       if (this.searchKeyword) {
         data.keyword = this.searchKeyword
       }
+      // 已租筛选时，只查询当前用户租赁的土地
+      if (this.currentFilter === 'leased') {
+        data.userId = getCurrentUserId()
+      }
       const res = await getLandList(data)
       if (res && res.data) {
         this.lands = res.data
+        
+        // 标记我的租赁
+        const userId = getCurrentUserId()
+        const myLeasesRes = await getActiveLeases({ userId })
+        if (myLeasesRes && myLeasesRes.data) {
+          this.lands.forEach(land => {
+            const myLease = myLeasesRes.data.find(lease => lease.landId === land.id)
+            if (myLease) {
+              land.isMyLease = true
+              land.leaseStatus = myLease.status
+              land.leaseId = myLease.id
+            }
+          })
+        }
       }
     },
     filterChange(type) {
@@ -110,6 +143,58 @@ export default {
     },
     goDetail(id) {
       uni.navigateTo({ url: '/pages/lease/detail?id=' + id })
+    },
+    handleTerminate(item) {
+      uni.showModal({
+        title: '确认退租',
+        content: `确定要退租"${item.name}"吗?退租后7天将归档到租赁记录。`,
+        success: async (res) => {
+          if (res.confirm) {
+            uni.showLoading({ title: '退租中...' })
+            try {
+              const result = await terminateLease({
+                leaseId: item.leaseId,
+                userId: getCurrentUserId(),
+                reason: '用户主动退租'
+              })
+              uni.hideLoading()
+              if (result && result.data) {
+                uni.showToast({ title: '退租成功', icon: 'success' })
+                this.loadLands()
+              }
+            } catch (error) {
+              uni.hideLoading()
+              uni.showToast({ title: '退租失败', icon: 'error' })
+            }
+          }
+        }
+      })
+    },
+    handleRenew(item) {
+      uni.showModal({
+        title: '续租',
+        content: `确定要续租"${item.name}"吗?`,
+        success: async (res) => {
+          if (res.confirm) {
+            uni.showLoading({ title: '续租中...' })
+            try {
+              const result = await renewLease({
+                oldLeaseId: item.leaseId,
+                userId: getCurrentUserId(),
+                newMonths: 12
+              })
+              uni.hideLoading()
+              if (result && result.data) {
+                uni.showToast({ title: '续租成功', icon: 'success' })
+                this.loadLands()
+              }
+            } catch (error) {
+              uni.hideLoading()
+              uni.showToast({ title: '续租失败', icon: 'error' })
+            }
+          }
+        }
+      })
     }
   }
 }
@@ -275,5 +360,33 @@ export default {
 .empty-text {
   font-size: 28rpx;
   color: #cccccc;
+}
+
+.my-lease-actions {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  padding: 16rpx 40rpx;
+  border-radius: 30rpx;
+  margin-left: 20rpx;
+}
+
+.terminate-btn {
+  background: linear-gradient(135deg, #FF5722, #FF7043);
+}
+
+.renew-btn {
+  background: linear-gradient(135deg, #2196F3, #42A5F5);
+}
+
+.action-btn-text {
+  font-size: 26rpx;
+  color: #ffffff;
+  font-weight: bold;
 }
 </style>

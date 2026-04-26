@@ -25,6 +25,10 @@
             <text class="record-label">售卖时间</text>
             <text class="record-value">{{ item.saleTime || item.createTime }}</text>
           </view>
+          <view class="record-row" v-if="item.actionType === 'sale' || item.actionType === 'refund'">
+            <text class="record-label">类型</text>
+            <text class="record-value">{{ item.actionType === 'sale' ? '正常交易' : '退款' }}</text>
+          </view>
           <view class="record-row" v-if="item.description">
             <text class="record-label">产品描述</text>
             <text class="record-value">{{ item.description }}</text>
@@ -48,8 +52,9 @@ export default {
     return {
       sales: [],
       statusMap: {
-        sold: '已售',
-        refunded: '已退款'
+        sold: '已上架',
+        completed: '收货已完成',
+        refunded: '退款已完成'
       }
     }
   },
@@ -118,6 +123,14 @@ export default {
   background-color: #FFF3E0;
 }
 
+.status-completed {
+  background-color: #E8F5E9;
+}
+
+.status-refunded {
+  background-color: #FFF1F0;
+}
+
 .status-text {
   font-size: 24rpx;
 }
@@ -132,6 +145,14 @@ export default {
 
 .status-sold_out .status-text {
   color: #FF9800;
+}
+
+.status-completed .status-text {
+  color: #4CAF50;
+}
+
+.status-refunded .status-text {
+  color: #FF3B30;
 }
 
 .record-body {

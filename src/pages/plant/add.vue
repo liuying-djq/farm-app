@@ -3,7 +3,7 @@
     <view class="form-card">
       <view class="form-item">
         <text class="form-label">作物名称</text>
-        <input class="form-input" v-model="form.name" placeholder="请输入作物名称" />
+        <input class="form-input" v-model="form.name" placeholder="请输入作物名称，如番茄、黄瓜" />
       </view>
 
       <view class="form-item">
@@ -32,63 +32,100 @@
           </view>
         </picker>
       </view>
-
-      <view class="form-item">
-        <text class="form-label">预计收获日期</text>
-        <picker mode="date" :value="form.expectedHarvestDate" @change="onHarvestDateChange">
-          <view class="picker-value">
-            <text :class="form.expectedHarvestDate ? 'picker-text' : 'picker-placeholder'">
-              {{ form.expectedHarvestDate || '请选择日期' }}
-            </text>
-            <text class="picker-arrow">></text>
-          </view>
-        </picker>
-      </view>
-
-      <view class="form-item">
-        <text class="form-label">种植说明</text>
-        <textarea class="form-textarea" v-model="form.description" placeholder="请输入种植说明" />
-      </view>
     </view>
 
-    <!-- 每日计划设置 -->
-    <view class="form-card" v-if="totalDays > 0">
-      <view class="section-header">
-        <text class="section-title">每日计划</text>
-        <text class="section-hint">共{{ totalDays }}天，点击日期选择要执行的任务</text>
+    <!-- 智能种植分析按钮 -->
+    <view class="sensor-btn-wrap" v-if="form.name && form.landId">
+      <view class="sensor-btn" @click="runSensorAnalysis">
+        <text class="sensor-btn-text">智能种植分析</text>
       </view>
+      <text class="sensor-hint">系统将根据天气和作物情况自动生成每周计划</text>
+    </view>
 
-      <view class="day-list">
-        <view class="day-item" v-for="(day, index) in dayList" :key="index">
-          <view class="day-header" @click="toggleDayExpand(index)">
-            <text class="day-date">{{ day.date }}</text>
-            <text class="day-week">周{{ day.weekday }}</text>
-            <view class="day-task-dots" v-if="getDayTasks(index).length">
-              <view class="task-dot" v-for="(t, i) in getDayTasks(index)" :key="i" :class="'dot-' + getTaskColor(t)"></view>
-            </view>
-            <text v-else class="day-no-task">未设置</text>
-            <text class="day-arrow">{{ expandedDay === index ? '▼' : '▶' }}</text>
-          </view>
-          <view class="day-tasks" v-if="expandedDay === index">
-            <view class="task-check" v-for="task in taskOptions" :key="task">
-              <view :class="['checkbox', hasTask(index, task) ? 'checkbox-checked' : '']" @click="toggleTask(index, task)">
-                <text class="checkbox-text" v-if="hasTask(index, task)">✓</text>
-              </view>
-              <text class="task-check-label" @click="toggleTask(index, task)">{{ task }}</text>
-            </view>
+    <!-- 智能种植分析结果 -->
+    <view class="sensor-result" v-if="sensorData">
+      <!-- 天气预报卡片 -->
+      <view class="result-card">
+        <view class="card-header">
+          <text class="card-title">天气预报（未来7天）</text>
+        </view>
+        <view class="weather-list">
+          <view class="weather-item" v-for="(w, index) in sensorData.weatherForecast" :key="index">
+            <text class="weather-date">{{ w.date }}</text>
+            <text class="weather-icon">{{ weatherIcons[w.weather] || '🌤' }}</text>
+            <text class="weather-desc">{{ w.weather }}</text>
+            <text class="weather-temp">{{ w.tempLow }}°~{{ w.tempHigh }}°</text>
+            <text class="weather-humidity">💧{{ w.humidity }}%</text>
           </view>
         </view>
       </view>
+
+      <!-- 作物分析卡片 -->
+      <view class="result-card" v-if="sensorData.cropAnalysis">
+        <view class="card-header">
+          <text class="card-title">作物分析</text>
+        </view>
+        <view class="analysis-body">
+          <view class="analysis-row">
+            <text class="analysis-label">生长周期</text>
+            <text class="analysis-value">{{ sensorData.cropAnalysis.growthCycleDays }}天</text>
+          </view>
+          <view class="analysis-row">
+            <text class="analysis-label">需水程度</text>
+            <text class="analysis-value">{{ waterNeedMap[sensorData.cropAnalysis.waterNeed] }}</text>
+          </view>
+          <view class="analysis-row">
+            <text class="analysis-label">施肥需求</text>
+            <text class="analysis-value">{{ fertilizerNeedMap[sensorData.cropAnalysis.fertilizerNeed] }}</text>
+          </view>
+          <view class="analysis-row">
+            <text class="analysis-label">虫害风险</text>
+            <text :class="['analysis-value', sensorData.cropAnalysis.pestRisk === 'high' ? 'text-danger' : '']">{{ pestRiskMap[sensorData.cropAnalysis.pestRisk] }}</text>
+          </view>
+          <view class="analysis-suggestion">
+            <text class="suggestion-text">{{ sensorData.cropAnalysis.suggestion }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 推荐计划预览 -->
+      <view class="result-card" v-if="sensorData.recommendedPlan && sensorData.recommendedPlan.length">
+        <view class="card-header">
+          <text class="card-title">推荐每周计划</text>
+          <text class="card-subtitle">系统自动生成，可确认后创建</text>
+        </view>
+        <view class="plan-preview">
+          <view class="plan-day" v-for="(day, index) in sensorData.recommendedPlan" :key="index">
+            <text class="plan-date">{{ day.date }}</text>
+            <view class="plan-tasks" v-if="day.tasks && day.tasks.length">
+              <view class="plan-task" v-for="(task, ti) in day.tasks" :key="ti">
+                <text class="task-icon-small">{{ taskIcons[task] || '📋' }}</text>
+                <text class="task-name-small">{{ task }}</text>
+              </view>
+            </view>
+            <text v-else class="plan-no-task">无任务</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 确认创建按钮 -->
+      <view class="confirm-btn" @click="confirmCreate">
+        <text class="confirm-text">确认创建</text>
+      </view>
     </view>
 
-    <view class="submit-btn" @click="submit">
-      <text class="submit-text">确认添加</text>
+    <!-- 加载中 -->
+    <view class="loading-mask" v-if="analyzing">
+      <view class="loading-content">
+        <text class="loading-text">智能种植分析中...</text>
+        <text class="loading-hint">正在获取天气和作物数据</text>
+      </view>
     </view>
   </view>
 </template>
 
 <script>
-import { createPlant } from '../../api/plant'
+import { createPlantWithSensor, getSensorAnalysis } from '../../api/plant'
 import { getMyLeases } from '../../api/lease'
 import { getLandDetail } from '../../api/land'
 import { getCurrentUserId } from '../../utils/auth'
@@ -101,41 +138,51 @@ export default {
         name: '',
         landId: null,
         landName: '',
-        plantDate: '',
-        expectedHarvestDate: '',
-        description: ''
+        plantDate: ''
       },
       lands: [],
       landNames: [],
-      taskOptions: ['浇水', '施肥', '驱虫', '除草', '修剪'],
-      dailyTasks: {}, // { 0: ['浇水','施肥'], 1: ['浇水'], ... }  key是日期索引
-      expandedDay: null
-    }
-  },
-  computed: {
-    totalDays() {
-      if (!this.form.plantDate || !this.form.expectedHarvestDate) return 0
-      const start = new Date(this.form.plantDate)
-      const end = new Date(this.form.expectedHarvestDate)
-      const diff = Math.ceil((end - start) / (24 * 60 * 60 * 1000))
-      return diff >= 0 ? diff + 1 : 0
-    },
-    dayList() {
-      if (this.totalDays === 0) return []
-      const start = new Date(this.form.plantDate)
-      const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-      const list = []
-      for (let i = 0; i < this.totalDays; i++) {
-        const date = new Date(start)
-        date.setDate(start.getDate() + i)
-        const dateStr = date.toISOString().split('T')[0]
-        const weekday = weekdays[date.getDay()]
-        list.push({ date: dateStr, weekday: weekday })
+      sensorData: null,
+      analyzing: false,
+      weatherIcons: {
+        '晴': '☀️',
+        '多云': '⛅',
+        '阴': '☁️',
+        '小雨': '🌦',
+        '中雨': '🌧',
+        '大雨': '⛈',
+        '雷阵雨': '⛈'
+      },
+      taskIcons: {
+        '浇水': '💧',
+        '施肥': '🌿',
+        '驱虫': '🐛',
+        '除草': '✂️',
+        '修剪': '🌱'
+      },
+      waterNeedMap: {
+        'very_high': '非常高',
+        'high': '高',
+        'medium': '中等',
+        'low': '低'
+      },
+      fertilizerNeedMap: {
+        'high': '高',
+        'medium': '中等',
+        'low': '低'
+      },
+      pestRiskMap: {
+        'high': '高',
+        'medium': '中等',
+        'low': '低'
       }
-      return list
     }
   },
   async onLoad(options) {
+    // 默认种植日期为今天
+    const today = new Date()
+    this.form.plantDate = today.toISOString().split('T')[0]
+
     if (options.landId) {
       this.fixedLand = true
       this.form.landId = parseInt(options.landId)
@@ -164,50 +211,13 @@ export default {
       const idx = e.detail.value
       this.form.landId = this.lands[idx].id
       this.form.landName = this.lands[idx].name
+      // 切换地块后清除智能分析数据
+      this.sensorData = null
     },
     onPlantDateChange(e) {
       this.form.plantDate = e.detail.value
-      this.dailyTasks = {}
-      this.expandedDay = null
     },
-    onHarvestDateChange(e) {
-      this.form.expectedHarvestDate = e.detail.value
-      this.dailyTasks = {}
-      this.expandedDay = null
-    },
-    toggleDayExpand(index) {
-      this.expandedDay = this.expandedDay === index ? null : index
-    },
-    hasTask(dayIndex, task) {
-      return (this.dailyTasks[dayIndex] || []).includes(task)
-    },
-    getDayTasks(dayIndex) {
-      return this.dailyTasks[dayIndex] || []
-    },
-    getTaskColor(task) {
-      const colors = {
-        '浇水': 'blue',
-        '施肥': 'orange',
-        '驱虫': 'red',
-        '除草': 'green',
-        '修剪': 'purple'
-      }
-      return colors[task] || 'gray'
-    },
-    toggleTask(dayIndex, task) {
-      if (!this.dailyTasks[dayIndex]) {
-        this.$set(this.dailyTasks, dayIndex, [])
-      }
-      const tasks = this.dailyTasks[dayIndex]
-      const idx = tasks.indexOf(task)
-      if (idx >= 0) {
-        tasks.splice(idx, 1)
-      } else {
-        tasks.push(task)
-      }
-      this.$set(this.dailyTasks, dayIndex, [...tasks])
-    },
-    async submit() {
+    async runSensorAnalysis() {
       if (!this.form.name) {
         uni.showToast({ title: '请输入作物名称', icon: 'none' })
         return
@@ -216,35 +226,61 @@ export default {
         uni.showToast({ title: '请选择地块', icon: 'none' })
         return
       }
-      if (!this.form.plantDate) {
-        uni.showToast({ title: '请选择种植日期', icon: 'none' })
-        return
-      }
-      if (!this.form.expectedHarvestDate) {
-        uni.showToast({ title: '请选择预计收获日期', icon: 'none' })
-        return
-      }
 
-      // 构建 dailyTasks 参数：按日期发送任务
-      const dailyTasksList = []
-      for (let i = 0; i < this.totalDays; i++) {
-        const tasks = this.dailyTasks[i]
-        if (tasks && tasks.length > 0) {
-          const date = this.dayList[i].date
-          dailyTasksList.push({ date: date, tasks: tasks })
+      this.analyzing = true
+      this.sensorData = null
+
+      try {
+        const res = await getSensorAnalysis({
+          landId: this.form.landId,
+          cropName: this.form.name
+        })
+
+        if (res && res.code === 200 && res.data) {
+          this.sensorData = res.data
+          uni.showToast({ title: '分析完成', icon: 'success' })
+        } else {
+          uni.showToast({ title: res.message || '分析失败', icon: 'none' })
         }
+      } catch (error) {
+        uni.showToast({ title: '分析失败', icon: 'none' })
+      } finally {
+        this.analyzing = false
+      }
+    },
+    async confirmCreate() {
+      if (!this.form.name) {
+        uni.showToast({ title: '请输入作物名称', icon: 'none' })
+        return
+      }
+      if (!this.form.landId) {
+        uni.showToast({ title: '请选择地块', icon: 'none' })
+        return
       }
 
-      const res = await createPlant({
-        ...this.form,
-        userId: getCurrentUserId(),
-        dailyTasks: dailyTasksList
-      })
-      if (res && res.data) {
-        uni.showToast({ title: '添加成功', icon: 'success' })
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 1500)
+      uni.showLoading({ title: '创建中...' })
+
+      try {
+        const res = await createPlantWithSensor({
+          name: this.form.name,
+          landId: this.form.landId,
+          landName: this.form.landName,
+          userId: getCurrentUserId()
+        })
+
+        uni.hideLoading()
+
+        if (res && res.data) {
+          uni.showToast({ title: '创建成功', icon: 'success' })
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1500)
+        } else {
+          uni.showToast({ title: '创建失败', icon: 'none' })
+        }
+      } catch (error) {
+        uni.hideLoading()
+        uni.showToast({ title: '创建失败', icon: 'none' })
       }
     }
   }
@@ -256,7 +292,7 @@ export default {
   min-height: 100vh;
   background-color: #f5f5f5;
   padding: 20rpx;
-  padding-bottom: 120rpx;
+  padding-bottom: 140rpx;
 }
 
 .form-card {
@@ -291,17 +327,6 @@ export default {
   border-radius: 8rpx;
 }
 
-.form-textarea {
-  font-size: 28rpx;
-  color: #333333;
-  padding: 12rpx;
-  background-color: #f9f9f9;
-  border-radius: 8rpx;
-  width: 100%;
-  height: 160rpx;
-  box-sizing: border-box;
-}
-
 .picker-value {
   display: flex;
   justify-content: space-between;
@@ -326,138 +351,252 @@ export default {
   color: #cccccc;
 }
 
-.section-header {
+/* 智能种植分析按钮 */
+.sensor-btn-wrap {
+  margin-bottom: 20rpx;
+  text-align: center;
+}
+
+.sensor-btn {
+  background: linear-gradient(135deg, #4CAF50, #66BB6A);
+  padding: 24rpx;
+  border-radius: 12rpx;
+  text-align: center;
+  margin-bottom: 12rpx;
+}
+
+.sensor-btn-text {
+  font-size: 30rpx;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.sensor-hint {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+/* 智能种植分析结果 */
+.sensor-result {
+  margin-top: 10rpx;
+}
+
+.result-card {
+  background-color: #ffffff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 16rpx;
   padding-bottom: 12rpx;
   border-bottom: 1rpx solid #f0f0f0;
 }
 
-.section-title {
+.card-title {
   font-size: 30rpx;
   font-weight: bold;
   color: #333333;
-  display: block;
-  margin-bottom: 4rpx;
 }
 
-.section-hint {
-  font-size: 24rpx;
+.card-subtitle {
+  font-size: 22rpx;
   color: #999999;
 }
 
-.day-list {
-  max-height: 800rpx;
+/* 天气列表 */
+.weather-list {
+  max-height: 400rpx;
   overflow-y: auto;
 }
 
-.day-item {
-  border-bottom: 1rpx solid #f5f5f5;
+.weather-item {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #f9f9f9;
 }
 
-.day-item:last-child {
+.weather-item:last-child {
   border-bottom: none;
 }
 
-.day-header {
-  display: flex;
-  align-items: center;
-  padding: 16rpx 0;
+.weather-date {
+  font-size: 24rpx;
+  color: #666666;
+  width: 160rpx;
 }
 
-.day-date {
+.weather-icon {
+  font-size: 30rpx;
+  margin-right: 12rpx;
+}
+
+.weather-desc {
+  font-size: 24rpx;
+  color: #333333;
+  width: 80rpx;
+}
+
+.weather-temp {
+  font-size: 24rpx;
+  color: #FF6B6B;
+  flex: 1;
+}
+
+.weather-humidity {
+  font-size: 22rpx;
+  color: #4FC3F7;
+}
+
+/* 作物分析 */
+.analysis-body {
+  padding: 8rpx 0;
+}
+
+.analysis-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid #f9f9f9;
+}
+
+.analysis-row:last-child {
+  border-bottom: none;
+}
+
+.analysis-label {
+  font-size: 26rpx;
+  color: #999999;
+}
+
+.analysis-value {
   font-size: 26rpx;
   color: #333333;
   font-weight: 500;
-  width: 180rpx;
 }
 
-.day-week {
+.text-danger {
+  color: #FF3B30;
+}
+
+.analysis-suggestion {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background-color: #E8F5E9;
+  border-radius: 8rpx;
+}
+
+.suggestion-text {
+  font-size: 26rpx;
+  color: #4CAF50;
+  line-height: 1.6;
+}
+
+/* 推荐计划预览 */
+.plan-preview {
+  max-height: 500rpx;
+  overflow-y: auto;
+}
+
+.plan-day {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #f9f9f9;
+}
+
+.plan-day:last-child {
+  border-bottom: none;
+}
+
+.plan-date {
   font-size: 24rpx;
   color: #666666;
-  width: 60rpx;
+  width: 160rpx;
+  flex-shrink: 0;
 }
 
-.day-task-dots {
-  flex: 1;
+.plan-tasks {
   display: flex;
+  flex-wrap: wrap;
   gap: 8rpx;
-  flex-wrap: wrap;
-}
-
-.task-dot {
-  width: 24rpx;
-  height: 24rpx;
-  border-radius: 50%;
-}
-
-.dot-blue { background-color: #2196F3; }
-.dot-orange { background-color: #FF9800; }
-.dot-red { background-color: #F44336; }
-.dot-green { background-color: #4CAF50; }
-.dot-purple { background-color: #9C27B0; }
-.dot-gray { background-color: #9E9E9E; }
-
-.day-no-task {
   flex: 1;
-  font-size: 24rpx;
-  color: #cccccc;
 }
 
-.day-arrow {
-  font-size: 20rpx;
-  color: #cccccc;
-  margin-left: 8rpx;
-}
-
-.day-tasks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  padding: 8rpx 0 16rpx 0;
-}
-
-.task-check {
+.plan-task {
   display: flex;
   align-items: center;
+  background-color: #f5f7fa;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
 }
 
-.checkbox {
-  width: 36rpx;
-  height: 36rpx;
-  border: 2rpx solid #dddddd;
-  border-radius: 6rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 8rpx;
-}
-
-.checkbox-checked {
-  background-color: #4CAF50;
-  border-color: #4CAF50;
-}
-
-.checkbox-text {
+.task-icon-small {
   font-size: 22rpx;
-  color: #ffffff;
+  margin-right: 4rpx;
 }
 
-.task-check-label {
-  font-size: 26rpx;
+.task-name-small {
+  font-size: 22rpx;
   color: #333333;
 }
 
-.submit-btn {
-  background: linear-gradient(135deg, #4CAF50, #66BB6A);
+.plan-no-task {
+  font-size: 22rpx;
+  color: #cccccc;
+}
+
+/* 确认创建按钮 */
+.confirm-btn {
+  background: linear-gradient(135deg, #1677FF, #4096FF);
   padding: 24rpx;
   border-radius: 12rpx;
   text-align: center;
   margin-top: 10rpx;
 }
 
-.submit-text {
+.confirm-text {
   font-size: 30rpx;
   color: #ffffff;
   font-weight: bold;
+}
+
+/* 加载遮罩 */
+.loading-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loading-content {
+  background-color: #ffffff;
+  border-radius: 24rpx;
+  padding: 60rpx 80rpx;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 32rpx;
+  color: #333333;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.loading-hint {
+  font-size: 26rpx;
+  color: #999999;
 }
 </style>

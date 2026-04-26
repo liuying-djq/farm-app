@@ -40,10 +40,6 @@
         <text class="menu-text">售卖记录</text>
         <text class="menu-arrow">></text>
       </view>
-      <view class="menu-item" @click="goTo('/pages/mine/pending-ship')">
-        <text class="menu-text">准备发货</text>
-        <text class="menu-arrow">></text>
-      </view>
     </view>
 
     <view class="menu-card">
