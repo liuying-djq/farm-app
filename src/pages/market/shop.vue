@@ -138,7 +138,7 @@ export default {
     async loadProducts() {
       let res
       if (this.currentTab === 'all') {
-        const data = {}
+        const data = { excludeUserId: getCurrentUserId() }
         if (this.searchKeyword) {
           data.keyword = this.searchKeyword
         }

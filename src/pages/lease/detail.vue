@@ -204,18 +204,11 @@ export default {
     },
     async checkMyLease() {
       const userId = getCurrentUserId()
-      console.log('当前用户ID:', userId)
-      console.log('当前土地ID:', this.landId)
-      
       const res = await getActiveLeases({ userId })
-      console.log('活跃租赁列表:', res)
-      
       if (res && res.data) {
         const myLease = res.data.find(lease => lease.landId === this.landId)
-        console.log('找到的租赁:', myLease)
         if (myLease) {
           this.myLease = myLease
-          console.log('设置myLease:', this.myLease)
         }
       }
     },
@@ -226,7 +219,6 @@ export default {
       this.startDate = e.detail.value
     },
     doLease() {
-      // 弹出付款确认弹窗
       this.showPayModal = true
     },
     closePayModal() {
@@ -237,7 +229,6 @@ export default {
 
       uni.showLoading({ title: '付款中...' })
 
-      // 模拟付款过程(实际应接微信支付等)
       setTimeout(async () => {
         uni.hideLoading()
 
@@ -262,7 +253,8 @@ export default {
         if (leaseRes && leaseRes.data) {
           uni.showToast({ title: '付款成功', icon: 'success' })
           setTimeout(() => {
-            uni.navigateTo({
+            // 用redirectTo替换详情页，避免返回键回到租赁页导致重复租赁
+            uni.redirectTo({
               url: '/pages/lease/contract?id=' + leaseRes.data.id
             })
           }, 1500)
@@ -354,7 +346,8 @@ export default {
         if (result && result.data) {
           uni.showToast({ title: '续租成功', icon: 'success' })
           setTimeout(() => {
-            uni.navigateTo({
+            // 用redirectTo替换详情页，避免返回键回到租赁页
+            uni.redirectTo({
               url: '/pages/lease/contract?id=' + result.data.id
             })
           }, 1500)

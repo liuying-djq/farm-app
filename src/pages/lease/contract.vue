@@ -68,7 +68,7 @@
 
     <view class="action-bar">
       <view class="btn btn-primary" @click="goBack">
-        <text class="btn-text">返回</text>
+        <text class="btn-text">返回首页</text>
       </view>
     </view>
   </view>
@@ -112,7 +112,7 @@ export default {
       }
     },
     goBack() {
-      uni.navigateBack()
+      uni.switchTab({ url: '/pages/index/index' })
     }
   }
 }
